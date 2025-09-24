@@ -11,7 +11,7 @@ datasource db {
 }
 
 model User {
-  id         Int         @id @default(autoincrement())
+  id         String      @id @default(uuid()) @db.Uuid
   email      String      @unique
   password   String
   isActive   Boolean     @default(true)
@@ -21,27 +21,27 @@ model User {
 }
 
 model Role {
-  id              Int               @id @default(autoincrement())
-  name            String            @unique
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String           @unique
   description     String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   userRoles       UserRole[]
   rolePermissions RolePermission[]
 }
 
 model Permission {
-  id              Int               @id @default(autoincrement())
-  name            String            @unique
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String           @unique
   description     String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   rolePermissions RolePermission[]
 }
 
 model UserRole {
-  userId     Int      @map("user_id")
-  roleId     Int      @map("role_id")
+  userId     String   @map("user_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
   assignedAt DateTime @default(now()) @map("assigned_at")
 
   user User @relation(fields: [userId], references: [id])
@@ -53,8 +53,8 @@ model UserRole {
 }
 
 model RolePermission {
-  roleId       Int      @map("role_id")
-  permissionId Int      @map("permission_id")
+  roleId       String   @map("role_id") @db.Uuid
+  permissionId String   @map("permission_id") @db.Uuid
   grantedAt    DateTime @default(now()) @map("granted_at")
 
   role       Role       @relation(fields: [roleId], references: [id])

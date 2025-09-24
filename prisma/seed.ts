@@ -60,7 +60,7 @@ async function main(): Promise<void> {
     });
   }
 
-  const adminPassword = await hash('ChangeMe123!', 12);
+  const adminPassword = await hash('123123', 12);
 
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@randevu.local' },

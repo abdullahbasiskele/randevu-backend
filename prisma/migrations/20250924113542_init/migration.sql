@@ -1,6 +1,9 @@
+-- Enable UUID support
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- CreateTable
 CREATE TABLE "public"."User" (
-    "id" SERIAL NOT NULL,
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
@@ -12,7 +15,7 @@ CREATE TABLE "public"."User" (
 
 -- CreateTable
 CREATE TABLE "public"."Role" (
-    "id" SERIAL NOT NULL,
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "name" TEXT NOT NULL,
     "description" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -23,7 +26,7 @@ CREATE TABLE "public"."Role" (
 
 -- CreateTable
 CREATE TABLE "public"."Permission" (
-    "id" SERIAL NOT NULL,
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "name" TEXT NOT NULL,
     "description" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -34,8 +37,8 @@ CREATE TABLE "public"."Permission" (
 
 -- CreateTable
 CREATE TABLE "public"."user_roles" (
-    "user_id" INTEGER NOT NULL,
-    "role_id" INTEGER NOT NULL,
+    "user_id" UUID NOT NULL,
+    "role_id" UUID NOT NULL,
     "assigned_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "user_roles_pkey" PRIMARY KEY ("user_id","role_id")
@@ -43,8 +46,8 @@ CREATE TABLE "public"."user_roles" (
 
 -- CreateTable
 CREATE TABLE "public"."role_permissions" (
-    "role_id" INTEGER NOT NULL,
-    "permission_id" INTEGER NOT NULL,
+    "role_id" UUID NOT NULL,
+    "permission_id" UUID NOT NULL,
     "granted_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "role_permissions_pkey" PRIMARY KEY ("role_id","permission_id")
