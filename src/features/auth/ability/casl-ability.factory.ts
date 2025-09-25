@@ -17,7 +17,8 @@ export type AppAbility = PrismaAbility<[Action, Subjects]>;
 
 @Injectable()
 export class CaslAbilityFactory {
-  private readonly abilityClass = createPrismaAbility as unknown as AbilityClass<AppAbility>;
+  private readonly abilityClass =
+    createPrismaAbility as unknown as AbilityClass<AppAbility>;
 
   createForUser(user: AuthenticatedUser): AppAbility {
     const { can, build } = new AbilityBuilder<AppAbility>(this.abilityClass);

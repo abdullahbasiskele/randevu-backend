@@ -31,7 +31,7 @@ export class AuthenticatedUserDto {
 
   @ApiProperty({
     type: [String],
-    description: 'Kullanıcının sahip olduğu izin adları',
+    description: 'Kullanicinin sahip oldugu izin adlari',
   })
   permissions!: string[];
 }
@@ -42,6 +42,12 @@ export class LoginResponseDto {
 
   @ApiProperty({ example: 'Bearer' })
   tokenType!: string;
+
+  @ApiProperty({ description: 'Yeni access token uretmek icin kullanilir' })
+  refreshToken!: string;
+
+  @ApiProperty({ description: 'Access token suresi (saniye)' })
+  expiresIn!: number;
 
   @ApiProperty({ type: AuthenticatedUserDto })
   user!: AuthenticatedUserDto;

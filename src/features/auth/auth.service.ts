@@ -1,4 +1,8 @@
-﻿import { Injectable, NotFoundException } from '@nestjs/common';
+﻿import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compare } from 'bcryptjs';
 import {
@@ -6,6 +10,7 @@ import {
   UsersService,
   UserWithRolePermissions,
 } from '../user/services/user.service';
+import { RefreshTokenService } from './services/refresh-token.service';
 
 export interface AuthenticatedUser {
   id: string;
@@ -15,11 +20,29 @@ export interface AuthenticatedUser {
   permissions: string[];
 }
 
+export interface OAuthProfile {
+  id: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface AuthTokensResponse {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: AuthenticatedUser;
+}
+
 @Injectable()
 export class AuthService {
+  private readonly tokenExpiresInSeconds = this.parseExpiresIn();
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly refreshTokenService: RefreshTokenService,
   ) {}
 
   private toAuthenticatedUser(
@@ -34,6 +57,57 @@ export class AuthService {
       isActive: user.isActive,
       roles,
       permissions,
+    };
+  }
+
+  private parseExpiresIn(): number {
+    const expires = process.env.JWT_EXPIRES ?? '1d';
+    if (/^\d+$/.test(expires)) {
+      return Number(expires);
+    }
+
+    const match = expires.match(/^(\d+)([smhd])$/i);
+    if (!match) {
+      return 3600;
+    }
+
+    const value = Number(match[1]);
+    const unit = match[2].toLowerCase();
+
+    switch (unit) {
+      case 's':
+        return value;
+      case 'm':
+        return value * 60;
+      case 'h':
+        return value * 3600;
+      case 'd':
+        return value * 86400;
+      default:
+        return 3600;
+    }
+  }
+
+  private async buildAuthResponse(
+    user: AuthenticatedUser,
+  ): Promise<AuthTokensResponse> {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      roles: user.roles.map((role) => role.name),
+      permissions: user.permissions,
+    };
+
+    const accessToken = await this.jwtService.signAsync(payload);
+    const { token: refreshToken } =
+      await this.refreshTokenService.generateToken(user.id);
+
+    return {
+      accessToken,
+      refreshToken,
+      tokenType: 'Bearer',
+      expiresIn: this.tokenExpiresInSeconds,
+      user,
     };
   }
 
@@ -54,31 +128,74 @@ export class AuthService {
     return this.toAuthenticatedUser(user);
   }
 
-  async login(user: AuthenticatedUser): Promise<{
-    accessToken: string;
-    tokenType: string;
-    user: AuthenticatedUser;
-  }> {
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      roles: user.roles.map((role) => role.name),
-      permissions: user.permissions,
-    };
+  async login(user: AuthenticatedUser): Promise<AuthTokensResponse> {
+    return this.buildAuthResponse(user);
+  }
 
-    const accessToken = await this.jwtService.signAsync(payload);
+  async refreshTokens(refreshToken: string): Promise<AuthTokensResponse> {
+    const storedToken = await this.refreshTokenService
+      .resolveToken(refreshToken)
+      .catch(() => {
+        throw new UnauthorizedException(
+          'Gecersiz veya suresi dolmus refresh token',
+        );
+      });
 
-    return {
-      accessToken,
-      tokenType: 'Bearer',
-      user,
-    };
+    const user = await this.usersService.findById(storedToken.userId);
+    if (!user || !user.isActive) {
+      await this.refreshTokenService.revokeToken(refreshToken);
+      throw new UnauthorizedException('Kullanici dogrulanamadi');
+    }
+
+    await this.refreshTokenService.revokeToken(refreshToken);
+
+    const authUser = this.toAuthenticatedUser(user);
+    return this.buildAuthResponse(authUser);
+  }
+
+  async logout(refreshToken: string): Promise<void> {
+    await this.refreshTokenService.revokeToken(refreshToken);
   }
 
   async getProfile(userId: string): Promise<AuthenticatedUser> {
     const user = await this.usersService.findById(userId);
     if (!user) {
-      throw new NotFoundException('Kullanıcı bulunamadı');
+      throw new NotFoundException('Kullanici bulunamadi');
+    }
+
+    return this.toAuthenticatedUser(user);
+  }
+
+  async handleOAuthUser(
+    provider: string,
+    profile: OAuthProfile,
+  ): Promise<AuthenticatedUser> {
+    const providerUserId = profile.id;
+    let user = await this.usersService.findByAuthProvider(
+      provider,
+      providerUserId,
+    );
+
+    if (!user && profile.email) {
+      user = await this.usersService.findByEmail(profile.email);
+      if (user) {
+        await this.usersService.linkAuthProvider(
+          user.id,
+          provider,
+          providerUserId,
+        );
+      }
+    }
+
+    if (!user) {
+      const email =
+        profile.email ?? `${providerUserId}@${provider.toLowerCase()}.local`;
+
+      user = await this.usersService.createOAuthUser({
+        email,
+        provider,
+        providerUserId,
+      });
     }
 
     return this.toAuthenticatedUser(user);

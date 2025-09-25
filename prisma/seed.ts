@@ -5,12 +5,12 @@ const prisma = new PrismaClient();
 
 async function main(): Promise<void> {
   const permissions = [
-    { name: 'USER_CREATE', description: 'Kullanıcı oluşturma yetkisi' },
-    { name: 'USER_READ', description: 'Kullanıcıları görüntüleme yetkisi' },
-    { name: 'USER_UPDATE', description: 'Kullanıcı güncelleme yetkisi' },
-    { name: 'USER_DELETE', description: 'Kullanıcı silme yetkisi' },
-    { name: 'ROLE_MANAGE', description: 'Rolleri yönetme yetkisi' },
-    { name: 'PERMISSION_MANAGE', description: 'Yetkileri yönetme yetkisi' },
+    { name: 'USER_CREATE', description: 'Kullanici olusturma yetkisi' },
+    { name: 'USER_READ', description: 'Kullanicilari goruntuleme yetkisi' },
+    { name: 'USER_UPDATE', description: 'Kullanici guncelleme yetkisi' },
+    { name: 'USER_DELETE', description: 'Kullanici silme yetkisi' },
+    { name: 'ROLE_MANAGE', description: 'Rolleri yonetme yetkisi' },
+    { name: 'PERMISSION_MANAGE', description: 'Yetkileri yonetme yetkisi' },
   ];
 
   await prisma.permission.createMany({ data: permissions, skipDuplicates: true });
@@ -18,18 +18,18 @@ async function main(): Promise<void> {
   const [adminRole, userRole] = await Promise.all([
     prisma.role.upsert({
       where: { name: 'ADMIN' },
-      update: { description: 'Sistem yöneticisi' },
+      update: { description: 'Sistem yoneticisi' },
       create: {
         name: 'ADMIN',
-        description: 'Sistem yöneticisi',
+        description: 'Sistem yoneticisi',
       },
     }),
     prisma.role.upsert({
       where: { name: 'USER' },
-      update: { description: 'Standart kullanıcı' },
+      update: { description: 'Standart kullanici' },
       create: {
         name: 'USER',
-        description: 'Standart kullanıcı',
+        description: 'Standart kullanici',
       },
     }),
   ]);
@@ -44,18 +44,26 @@ async function main(): Promise<void> {
     .filter((permission) => permission.name === 'USER_READ')
     .map((permission) => permission.id);
 
-  await prisma.rolePermission.deleteMany({ where: { roleId: { in: [adminRole.id, userRole.id] } } });
+  await prisma.rolePermission.deleteMany({
+    where: { roleId: { in: [adminRole.id, userRole.id] } },
+  });
 
   if (adminPermissionIds.length > 0) {
     await prisma.rolePermission.createMany({
-      data: adminPermissionIds.map((permissionId) => ({ roleId: adminRole.id, permissionId })),
+      data: adminPermissionIds.map((permissionId) => ({
+        roleId: adminRole.id,
+        permissionId,
+      })),
       skipDuplicates: true,
     });
   }
 
   if (userPermissionIds.length > 0) {
     await prisma.rolePermission.createMany({
-      data: userPermissionIds.map((permissionId) => ({ roleId: userRole.id, permissionId })),
+      data: userPermissionIds.map((permissionId) => ({
+        roleId: userRole.id,
+        permissionId,
+      })),
       skipDuplicates: true,
     });
   }
@@ -88,7 +96,7 @@ main()
     await prisma.$disconnect();
   })
   .catch(async (error) => {
-    console.error('Seed sırasında hata oluştu:', error);
+    console.error('Seed sirasinda hata olustu:', error);
     await prisma.$disconnect();
     process.exit(1);
   });

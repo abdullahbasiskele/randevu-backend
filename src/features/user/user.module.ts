@@ -2,9 +2,10 @@
 import { AuthorizationModule } from '../auth/authorization.module';
 import { UsersController } from './controllers/users.controller';
 import { UsersService } from './services/user.service';
+import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 
 @Module({
-  imports: [AuthorizationModule],
+  imports: [PrismaModule, AuthorizationModule],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],
