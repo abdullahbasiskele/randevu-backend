@@ -1,0 +1,14 @@
+﻿.next
+node_modules
+coverage
+playwright-report
+junit.xml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env.local
+.env.test.local
+.env.production.local
