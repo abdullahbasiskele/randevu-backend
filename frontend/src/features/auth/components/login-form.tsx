@@ -50,7 +50,7 @@ export function LoginForm({ className }: LoginFormProps) {
   const form = useForm<LoginSchema>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      identifier: '',
+      email: '',
       password: '',
       rememberMe: false,
     },
@@ -108,10 +108,10 @@ export function LoginForm({ className }: LoginFormProps) {
             <div className="space-y-4">
               <FormField
                 control={form.control}
-                name="identifier"
+                name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>E-posta ya da T.C. Kimlik No</FormLabel>
+                    <FormLabel>E-posta</FormLabel>
                     <FormControl>
                       <Input
                         {...field}

@@ -6,10 +6,25 @@ import {
 } from '@/features/auth/schemas/login-schema';
 import { httpClient } from '@/lib/services/http';
 
+type RoleSummary = {
+  id: string;
+  name: string;
+};
+
+type AuthenticatedUserSummary = {
+  id: string;
+  email: string;
+  isActive: boolean;
+  roles: RoleSummary[];
+  permissions: string[];
+};
+
 export interface LoginSuccessResponse {
   accessToken: string;
-  refreshToken: string;
+  tokenType: string;
   expiresIn: number;
+  refreshTokenExpiresAt?: string;
+  user: AuthenticatedUserSummary;
 }
 
 export async function loginWithCredentials(
@@ -21,9 +36,8 @@ export async function loginWithCredentials(
     const { data } = await httpClient.post<LoginSuccessResponse>(
       '/auth/login',
       {
-        identifier: parsed.identifier,
+        email: parsed.email,
         password: parsed.password,
-        rememberMe: parsed.rememberMe,
       },
     );
 
@@ -32,25 +46,22 @@ export async function loginWithCredentials(
     if (isAxiosError(error)) {
       let responseMessage: string | undefined;
 
-      if (typeof error.response?.data === 'object' && error.response?.data) {
-        const messageCandidate = (error.response.data as { message?: unknown })
-          .message;
+      const responseData = error.response?.data as
+        | Partial<{ message: unknown }>
+        | undefined;
+      const messageCandidate = responseData?.message;
 
-        if (
-          typeof messageCandidate === 'string' &&
-          messageCandidate.trim().length > 0
-        ) {
-          responseMessage = messageCandidate;
-        }
+      if (typeof messageCandidate === 'string' && messageCandidate.trim()) {
+        responseMessage = messageCandidate;
       }
 
       throw new Error(
         responseMessage ??
           error.message ??
-          'Giriş sırasında beklenmeyen bir hata oluştu.',
+          'Giris sirasinda beklenmeyen bir hata olustu.',
       );
     }
 
-    throw new Error('Giriş sırasında beklenmeyen bir hata oluştu.');
+    throw new Error('Giris sirasinda beklenmeyen bir hata olustu.');
   }
 }

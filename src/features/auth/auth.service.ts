@@ -27,12 +27,16 @@ export interface OAuthProfile {
   lastName?: string;
 }
 
-export interface AuthTokensResponse {
+export interface AuthTokens {
   accessToken: string;
-  refreshToken: string;
   tokenType: string;
   expiresIn: number;
   user: AuthenticatedUser;
+}
+
+export interface AuthSession extends AuthTokens {
+  refreshToken: string;
+  refreshTokenExpiresAt: Date;
 }
 
 @Injectable()
@@ -88,9 +92,9 @@ export class AuthService {
     }
   }
 
-  private async buildAuthResponse(
+  private async buildAuthSession(
     user: AuthenticatedUser,
-  ): Promise<AuthTokensResponse> {
+  ): Promise<AuthSession> {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -99,12 +103,13 @@ export class AuthService {
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
-    const { token: refreshToken } =
+    const { token: refreshToken, expiresAt: refreshTokenExpiresAt } =
       await this.refreshTokenService.generateToken(user.id);
 
     return {
       accessToken,
       refreshToken,
+      refreshTokenExpiresAt,
       tokenType: 'Bearer',
       expiresIn: this.tokenExpiresInSeconds,
       user,
@@ -128,11 +133,11 @@ export class AuthService {
     return this.toAuthenticatedUser(user);
   }
 
-  async login(user: AuthenticatedUser): Promise<AuthTokensResponse> {
-    return this.buildAuthResponse(user);
+  async login(user: AuthenticatedUser): Promise<AuthSession> {
+    return this.buildAuthSession(user);
   }
 
-  async refreshTokens(refreshToken: string): Promise<AuthTokensResponse> {
+  async refreshTokens(refreshToken: string): Promise<AuthSession> {
     const storedToken = await this.refreshTokenService
       .resolveToken(refreshToken)
       .catch(() => {
@@ -150,7 +155,7 @@ export class AuthService {
     await this.refreshTokenService.revokeToken(refreshToken);
 
     const authUser = this.toAuthenticatedUser(user);
-    return this.buildAuthResponse(authUser);
+    return this.buildAuthSession(authUser);
   }
 
   async logout(refreshToken: string): Promise<void> {

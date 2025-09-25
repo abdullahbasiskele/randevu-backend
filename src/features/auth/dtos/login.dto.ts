@@ -43,11 +43,14 @@ export class LoginResponseDto {
   @ApiProperty({ example: 'Bearer' })
   tokenType!: string;
 
-  @ApiProperty({ description: 'Yeni access token uretmek icin kullanilir' })
-  refreshToken!: string;
-
   @ApiProperty({ description: 'Access token suresi (saniye)' })
   expiresIn!: number;
+
+  @ApiProperty({
+    description: 'Refresh token gecerlilik zamani',
+    required: false,
+  })
+  refreshTokenExpiresAt?: string;
 
   @ApiProperty({ type: AuthenticatedUserDto })
   user!: AuthenticatedUserDto;

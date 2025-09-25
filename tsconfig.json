@@ -6,6 +6,7 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
@@ -13,8 +14,11 @@
     "incremental": true,
     "strictNullChecks": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node", "jest"]
   },
   "include": ["src/**/*", "tasks/**/*"],
-  "exclude": ["node_modules", "dist", "test", "frontend", "**/*.spec.ts"]
+  "exclude": ["node_modules", "dist", "frontend", "**/*.spec.ts"]
 }
+
+
+

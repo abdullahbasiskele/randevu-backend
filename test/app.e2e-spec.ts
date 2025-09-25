@@ -1,13 +1,14 @@
-﻿import { INestApplication } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import request, { SuperTest, Test as RequestTest } from 'supertest';
+import request from 'supertest';
 import { AppModule } from './../src/app.module';
 
 type HttpServerLike = Parameters<typeof request>[0];
+type HttpClient = ReturnType<typeof request>;
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
-  let httpClient: SuperTest<RequestTest>;
+  let httpClient: HttpClient;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

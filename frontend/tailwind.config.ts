@@ -1,9 +1,13 @@
-﻿import type { Config } from 'tailwindcss';
+import type { Config } from 'tailwindcss';
 import tailwindcssAnimate from 'tailwindcss-animate';
 
 const config: Config = {
   darkMode: ['class'],
-  content: ['./src/**/*.{ts,tsx}', './src/app/**/*.{ts,tsx}', './src/components/**/*.{ts,tsx}'],
+  content: [
+    './src/**/*.{ts,tsx}',
+    './src/app/**/*.{ts,tsx}',
+    './src/components/**/*.{ts,tsx}',
+  ],
   theme: {
     container: {
       center: true,
