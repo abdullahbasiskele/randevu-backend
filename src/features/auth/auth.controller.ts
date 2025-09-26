@@ -10,6 +10,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBearerAuth,
@@ -20,8 +21,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { AuthService } from './auth.service';
-import type { AuthenticatedUser, AuthTokens } from './auth.service';
+import type { AuthenticatedUser, AuthSession, AuthTokens } from './auth.types';
+import { LoginCommand } from './commands/impl/login.command';
+import { LogoutCommand } from './commands/impl/logout.command';
+import { RefreshTokensCommand } from './commands/impl/refresh-tokens.command';
 import { CurrentUser } from './decorators/current-user.decorator';
 import {
   AuthenticatedUserDto,
@@ -30,6 +33,7 @@ import {
 } from './dtos/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
+import { GetProfileQuery } from './queries/impl/get-profile.query';
 
 type LocalAuthRequest = Request & { user: AuthenticatedUser };
 
@@ -42,7 +46,10 @@ type LoginResponsePayload = AuthTokens & {
 export class AuthController {
   private readonly refreshTokenCookieName = 'refresh_token';
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly commandBus: CommandBus,
+    private readonly queryBus: QueryBus,
+  ) {}
 
   private isProduction(): boolean {
     return process.env.NODE_ENV === 'production';
@@ -103,7 +110,9 @@ export class AuthController {
     @Req() req: LocalAuthRequest,
     @Res({ passthrough: true }) res: Response,
   ): Promise<LoginResponsePayload> {
-    const session = await this.authService.login(req.user);
+    const session = await this.commandBus.execute<LoginCommand, AuthSession>(
+      new LoginCommand(req.user),
+    );
     const { refreshToken, refreshTokenExpiresAt } = session;
 
     this.setRefreshTokenCookie(res, refreshToken, refreshTokenExpiresAt);
@@ -123,7 +132,10 @@ export class AuthController {
       throw new UnauthorizedException('Refresh token bulunamadi');
     }
 
-    const session = await this.authService.refreshTokens(refreshToken);
+    const session = await this.commandBus.execute<
+      RefreshTokensCommand,
+      AuthSession
+    >(new RefreshTokensCommand(refreshToken));
     const { refreshToken: newRefreshToken, refreshTokenExpiresAt } = session;
 
     this.setRefreshTokenCookie(res, newRefreshToken, refreshTokenExpiresAt);
@@ -143,7 +155,7 @@ export class AuthController {
     this.clearRefreshTokenCookie(res);
 
     if (refreshToken) {
-      await this.authService.logout(refreshToken);
+      await this.commandBus.execute(new LogoutCommand(refreshToken));
     }
   }
 
@@ -152,7 +164,9 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOkResponse({ type: AuthenticatedUserDto })
   async profile(@CurrentUser() user: AuthenticatedUser) {
-    return this.authService.getProfile(user.id);
+    return this.queryBus.execute<GetProfileQuery, AuthenticatedUser>(
+      new GetProfileQuery(user.id),
+    );
   }
 
   @Get('edevlet')
@@ -166,6 +180,8 @@ export class AuthController {
   @UseGuards(AuthGuard('edevlet'))
   @ApiOkResponse({ type: LoginResponseDto })
   handleEdevletCallback(@Req() req: LocalAuthRequest) {
-    return this.authService.login(req.user);
+    return this.commandBus.execute<LoginCommand, AuthSession>(
+      new LoginCommand(req.user),
+    );
   }
 }

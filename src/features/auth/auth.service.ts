@@ -6,38 +6,15 @@
 import { JwtService } from '@nestjs/jwt';
 import { compare } from 'bcryptjs';
 import {
-  RoleSummary,
   UsersService,
   UserWithRolePermissions,
 } from '../user/services/user.service';
 import { RefreshTokenService } from './services/refresh-token.service';
-
-export interface AuthenticatedUser {
-  id: string;
-  email: string;
-  isActive: boolean;
-  roles: RoleSummary[];
-  permissions: string[];
-}
-
-export interface OAuthProfile {
-  id: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-}
-
-export interface AuthTokens {
-  accessToken: string;
-  tokenType: string;
-  expiresIn: number;
-  user: AuthenticatedUser;
-}
-
-export interface AuthSession extends AuthTokens {
-  refreshToken: string;
-  refreshTokenExpiresAt: Date;
-}
+import type {
+  AuthenticatedUser,
+  AuthSession,
+  OAuthProfile,
+} from './auth.types';
 
 @Injectable()
 export class AuthService {
@@ -206,3 +183,9 @@ export class AuthService {
     return this.toAuthenticatedUser(user);
   }
 }
+export type {
+  AuthenticatedUser,
+  AuthSession,
+  AuthTokens,
+  OAuthProfile,
+} from './auth.types';

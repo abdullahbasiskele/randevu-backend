@@ -1,6 +1,7 @@
 ﻿import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { CqrsModule } from '@nestjs/cqrs';
 import { AuthorizationModule } from './authorization.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -10,6 +11,17 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { UsersModule } from '../user/user.module';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
+import { LoginHandler } from './commands/handlers/login.handler';
+import { RefreshTokensHandler } from './commands/handlers/refresh-tokens.handler';
+import { LogoutHandler } from './commands/handlers/logout.handler';
+import { GetProfileHandler } from './queries/handlers/get-profile.handler';
+
+const AUTH_CQRS_HANDLERS = [
+  LoginHandler,
+  RefreshTokensHandler,
+  LogoutHandler,
+  GetProfileHandler,
+];
 
 @Module({
   imports: [
@@ -17,6 +29,7 @@ import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module
     AuthorizationModule,
     PrismaModule,
     PassportModule,
+    CqrsModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET ?? 'supersecret',
       signOptions: {
@@ -33,6 +46,7 @@ import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module
     LocalStrategy,
     JwtStrategy,
     EdevletStrategy,
+    ...AUTH_CQRS_HANDLERS,
   ],
   exports: [AuthService],
 })
