@@ -1,6 +1,6 @@
 ﻿import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
-import { AuthService } from '../../auth.service';
-import type { AuthSession } from '../../auth.types';
+import { AuthService } from '../../services/auth.service';
+import type { AuthSession } from '../../../domain/models/auth.types';
 import { RefreshTokensCommand } from '../impl/refresh-tokens.command';
 
 @CommandHandler(RefreshTokensCommand)

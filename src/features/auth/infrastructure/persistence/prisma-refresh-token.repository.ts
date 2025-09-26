@@ -1,31 +1,25 @@
 ﻿import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { randomBytes, createHash } from 'crypto';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { createHash, randomBytes } from 'crypto';
+import {
+  RefreshTokenRepository,
+  type RefreshTokenRecord,
+} from '../../domain/repositories/refresh-token.repository';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
 
 const DEFAULT_TOKEN_LENGTH = Number(process.env.REFRESH_TOKEN_LENGTH ?? 64);
 const DEFAULT_TTL_DAYS = Number(process.env.REFRESH_TOKEN_TTL_DAYS ?? 7);
-const REFRESH_TOKEN_WITH_USER = {
-  include: {
-    user: true,
-  },
-} as const;
-
-type RefreshTokenWithUser = Prisma.RefreshTokenGetPayload<
-  typeof REFRESH_TOKEN_WITH_USER
->;
 
 @Injectable()
-export class RefreshTokenService {
-  constructor(private readonly prisma: PrismaService) {}
+export class PrismaRefreshTokenRepository extends RefreshTokenRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
 
-  async generateToken(
-    userId: string,
-  ): Promise<{ token: string; expiresAt: Date }> {
+  async generate(userId: string): Promise<{ token: string; expiresAt: Date }> {
     const token = randomBytes(Math.ceil(DEFAULT_TOKEN_LENGTH / 2))
       .toString('hex')
       .slice(0, DEFAULT_TOKEN_LENGTH);
-    const tokenHash = this.hashToken(token);
+    const tokenHash = this.hash(token);
     const expiresAt = this.calculateExpiry();
 
     await this.prisma.refreshToken.create({
@@ -39,10 +33,10 @@ export class RefreshTokenService {
     return { token, expiresAt };
   }
 
-  async resolveToken(token: string): Promise<RefreshTokenWithUser> {
-    const tokenHash = this.hashToken(token);
+  async findValid(token: string): Promise<RefreshTokenRecord | null> {
+    const tokenHash = this.hash(token);
 
-    const storedToken = await this.prisma.refreshToken.findFirst({
+    const record = await this.prisma.refreshToken.findFirst({
       where: {
         tokenHash,
         revokedAt: null,
@@ -50,18 +44,21 @@ export class RefreshTokenService {
           gt: new Date(),
         },
       },
-      ...REFRESH_TOKEN_WITH_USER,
     });
 
-    if (!storedToken) {
-      throw new Error('REFRESH_TOKEN_INVALID');
+    if (!record) {
+      return null;
     }
 
-    return storedToken;
+    return {
+      id: record.id,
+      userId: record.userId,
+      expiresAt: record.expiresAt,
+    };
   }
 
-  async revokeToken(token: string): Promise<void> {
-    const tokenHash = this.hashToken(token);
+  async revoke(token: string): Promise<void> {
+    const tokenHash = this.hash(token);
 
     await this.prisma.refreshToken.updateMany({
       where: {
@@ -74,7 +71,7 @@ export class RefreshTokenService {
     });
   }
 
-  async revokeUserTokens(userId: string): Promise<void> {
+  async revokeByUser(userId: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
       where: {
         userId,
@@ -86,13 +83,13 @@ export class RefreshTokenService {
     });
   }
 
+  private hash(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
   private calculateExpiry(): Date {
     const expires = new Date();
     expires.setDate(expires.getDate() + DEFAULT_TTL_DAYS);
     return expires;
-  }
-
-  private hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
   }
 }

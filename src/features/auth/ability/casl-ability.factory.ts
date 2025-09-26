@@ -1,7 +1,7 @@
 ﻿import { Injectable } from '@nestjs/common';
 import { AbilityBuilder, AbilityClass } from '@casl/ability';
 import { PrismaAbility, createPrismaAbility } from '@casl/prisma';
-import { AuthenticatedUser } from '../auth.service';
+import { AuthenticatedUser } from '../domain/models/auth.types';
 
 export enum Action {
   Manage = 'manage',

@@ -5,41 +5,28 @@
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compare } from 'bcryptjs';
-import {
-  UsersService,
-  UserWithRolePermissions,
-} from '../user/services/user.service';
-import { RefreshTokenService } from './services/refresh-token.service';
 import type {
   AuthenticatedUser,
   AuthSession,
   OAuthProfile,
-} from './auth.types';
+} from '../../domain/models/auth.types';
+import {
+  UserRepository,
+  type CreateOAuthUserInput,
+  type OAuthProviderLink,
+} from '../../../user/domain/repositories/user.repository';
+import { RefreshTokenRepository } from '../../domain/repositories/refresh-token.repository';
+import type { UserAggregate } from '../../../user/domain/models/user.model';
 
 @Injectable()
 export class AuthService {
   private readonly tokenExpiresInSeconds = this.parseExpiresIn();
 
   constructor(
-    private readonly usersService: UsersService,
+    private readonly userRepository: UserRepository,
+    private readonly refreshTokenRepository: RefreshTokenRepository,
     private readonly jwtService: JwtService,
-    private readonly refreshTokenService: RefreshTokenService,
   ) {}
-
-  private toAuthenticatedUser(
-    user: UserWithRolePermissions,
-  ): AuthenticatedUser {
-    const roles = this.usersService.mapRoles(user);
-    const permissions = this.usersService.collectPermissions(user);
-
-    return {
-      id: user.id,
-      email: user.email,
-      isActive: user.isActive,
-      roles,
-      permissions,
-    };
-  }
 
   private parseExpiresIn(): number {
     const expires = process.env.JWT_EXPIRES ?? '1d';
@@ -69,6 +56,19 @@ export class AuthService {
     }
   }
 
+  private mapToAuthenticatedUser(user: UserAggregate): AuthenticatedUser {
+    return {
+      id: user.id,
+      email: user.email,
+      isActive: user.isActive,
+      roles: user.roles.map((role) => ({
+        id: role.id,
+        name: role.name,
+      })),
+      permissions: user.permissions,
+    };
+  }
+
   private async buildAuthSession(
     user: AuthenticatedUser,
   ): Promise<AuthSession> {
@@ -81,7 +81,7 @@ export class AuthService {
 
     const accessToken = await this.jwtService.signAsync(payload);
     const { token: refreshToken, expiresAt: refreshTokenExpiresAt } =
-      await this.refreshTokenService.generateToken(user.id);
+      await this.refreshTokenRepository.generate(user.id);
 
     return {
       accessToken,
@@ -97,17 +97,17 @@ export class AuthService {
     email: string,
     password: string,
   ): Promise<AuthenticatedUser | null> {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.userRepository.findByEmail(email);
     if (!user || !user.isActive) {
       return null;
     }
 
-    const passwordMatches = await compare(password, user.password);
+    const passwordMatches = await compare(password, user.passwordHash);
     if (!passwordMatches) {
       return null;
     }
 
-    return this.toAuthenticatedUser(user);
+    return this.mapToAuthenticatedUser(user);
   }
 
   async login(user: AuthenticatedUser): Promise<AuthSession> {
@@ -115,77 +115,68 @@ export class AuthService {
   }
 
   async refreshTokens(refreshToken: string): Promise<AuthSession> {
-    const storedToken = await this.refreshTokenService
-      .resolveToken(refreshToken)
-      .catch(() => {
-        throw new UnauthorizedException(
-          'Gecersiz veya suresi dolmus refresh token',
-        );
-      });
+    const storedToken =
+      await this.refreshTokenRepository.findValid(refreshToken);
+    if (!storedToken) {
+      throw new UnauthorizedException(
+        'Gecersiz veya suresi dolmus refresh token',
+      );
+    }
 
-    const user = await this.usersService.findById(storedToken.userId);
+    const user = await this.userRepository.findById(storedToken.userId);
     if (!user || !user.isActive) {
-      await this.refreshTokenService.revokeToken(refreshToken);
+      await this.refreshTokenRepository.revoke(refreshToken);
       throw new UnauthorizedException('Kullanici dogrulanamadi');
     }
 
-    await this.refreshTokenService.revokeToken(refreshToken);
+    await this.refreshTokenRepository.revoke(refreshToken);
 
-    const authUser = this.toAuthenticatedUser(user);
+    const authUser = this.mapToAuthenticatedUser(user);
     return this.buildAuthSession(authUser);
   }
 
   async logout(refreshToken: string): Promise<void> {
-    await this.refreshTokenService.revokeToken(refreshToken);
+    await this.refreshTokenRepository.revoke(refreshToken);
   }
 
   async getProfile(userId: string): Promise<AuthenticatedUser> {
-    const user = await this.usersService.findById(userId);
+    const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new NotFoundException('Kullanici bulunamadi');
     }
 
-    return this.toAuthenticatedUser(user);
+    return this.mapToAuthenticatedUser(user);
   }
 
   async handleOAuthUser(
     provider: string,
     profile: OAuthProfile,
   ): Promise<AuthenticatedUser> {
-    const providerUserId = profile.id;
-    let user = await this.usersService.findByAuthProvider(
+    const link: OAuthProviderLink = {
       provider,
-      providerUserId,
-    );
+      providerUserId: profile.id,
+    };
+
+    let user = await this.userRepository.findByAuthProvider(link);
 
     if (!user && profile.email) {
-      user = await this.usersService.findByEmail(profile.email);
+      user = await this.userRepository.findByEmail(profile.email);
       if (user) {
-        await this.usersService.linkAuthProvider(
-          user.id,
-          provider,
-          providerUserId,
-        );
+        await this.userRepository.linkAuthProvider(user.id, link);
       }
     }
 
     if (!user) {
       const email =
-        profile.email ?? `${providerUserId}@${provider.toLowerCase()}.local`;
-
-      user = await this.usersService.createOAuthUser({
+        profile.email ?? `${profile.id}@${provider.toLowerCase()}.local`;
+      const input: CreateOAuthUserInput = {
         email,
         provider,
-        providerUserId,
-      });
+        providerUserId: profile.id,
+      };
+      user = await this.userRepository.createOAuthUser(input);
     }
 
-    return this.toAuthenticatedUser(user);
+    return this.mapToAuthenticatedUser(user);
   }
 }
-export type {
-  AuthenticatedUser,
-  AuthSession,
-  AuthTokens,
-  OAuthProfile,
-} from './auth.types';

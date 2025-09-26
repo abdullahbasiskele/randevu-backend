@@ -1,6 +1,6 @@
 ﻿import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
-import { AuthService } from '../../auth.service';
-import type { AuthenticatedUser } from '../../auth.types';
+import { AuthService } from '../../services/auth.service';
+import type { AuthenticatedUser } from '../../../domain/models/auth.types';
 import { GetProfileQuery } from '../impl/get-profile.query';
 
 @QueryHandler(GetProfileQuery)

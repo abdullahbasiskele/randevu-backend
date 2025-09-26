@@ -1,4 +1,7 @@
-﻿import type { RoleSummary } from '../user/services/user.service';
+﻿export interface RoleSummary {
+  id: string;
+  name: string;
+}
 
 export interface AuthenticatedUser {
   id: string;

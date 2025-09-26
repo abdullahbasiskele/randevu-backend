@@ -11,7 +11,7 @@ import {
   CaslAbilityFactory,
   AppAbility,
 } from '../ability/casl-ability.factory';
-import type { AuthenticatedUser } from '../auth.service';
+import type { AuthenticatedUser } from '../domain/models/auth.types';
 
 interface PolicyHandler {
   handle(ability: AppAbility): boolean;

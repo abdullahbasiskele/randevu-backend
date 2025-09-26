@@ -21,10 +21,14 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import type { AuthenticatedUser, AuthSession, AuthTokens } from './auth.types';
-import { LoginCommand } from './commands/impl/login.command';
-import { LogoutCommand } from './commands/impl/logout.command';
-import { RefreshTokensCommand } from './commands/impl/refresh-tokens.command';
+import type {
+  AuthenticatedUser,
+  AuthSession,
+  AuthTokens,
+} from './domain/models/auth.types';
+import { LoginCommand } from './application/commands/impl/login.command';
+import { LogoutCommand } from './application/commands/impl/logout.command';
+import { RefreshTokensCommand } from './application/commands/impl/refresh-tokens.command';
 import { CurrentUser } from './decorators/current-user.decorator';
 import {
   AuthenticatedUserDto,
@@ -33,7 +37,7 @@ import {
 } from './dtos/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
-import { GetProfileQuery } from './queries/impl/get-profile.query';
+import { GetProfileQuery } from './application/queries/impl/get-profile.query';
 
 type LocalAuthRequest = Request & { user: AuthenticatedUser };
 

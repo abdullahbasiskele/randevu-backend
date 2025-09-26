@@ -2,7 +2,11 @@
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-oauth2';
 import axios from 'axios';
-import { AuthService, AuthenticatedUser, OAuthProfile } from '../auth.service';
+import type {
+  AuthenticatedUser,
+  OAuthProfile,
+} from '../domain/models/auth.types';
+import { AuthService } from '../application/services/auth.service';
 
 interface OAuthUserInfo {
   sub?: string;

@@ -6,7 +6,7 @@ import { CheckPolicies } from '../../auth/decorators/check-policies.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PoliciesGuard } from '../../auth/guards/policies.guard';
 import { UserListItemDto } from '../dtos/user.dto';
-import { GetUsersQuery } from '../queries/impl/get-users.query';
+import { GetUsersQuery } from '../application/queries/impl/get-users.query';
 
 @ApiTags('Users')
 @ApiBearerAuth()

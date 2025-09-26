@@ -1,5 +1,5 @@
 ﻿import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
-import { AuthService } from '../../auth.service';
+import { AuthService } from '../../services/auth.service';
 import { LogoutCommand } from '../impl/logout.command';
 
 @CommandHandler(LogoutCommand)
