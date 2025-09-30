@@ -27,6 +27,7 @@ import type {
   AuthTokens,
 } from './domain/models/auth.types';
 import { LoginCommand } from './application/commands/impl/login.command';
+import { RegisterLocalUserCommand } from './application/commands/impl/register-local-user.command';
 import { LogoutCommand } from './application/commands/impl/logout.command';
 import { RefreshTokensCommand } from './application/commands/impl/refresh-tokens.command';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -35,6 +36,7 @@ import {
   LoginDto,
   LoginResponseDto,
 } from './dtos/login.dto';
+import { RegisterDto } from './dtos/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { GetProfileQuery } from './application/queries/impl/get-profile.query';
@@ -103,6 +105,24 @@ export class AuthController {
       user: tokens.user,
       refreshTokenExpiresAt: refreshTokenExpiresAt.toISOString(),
     };
+  }
+
+  @Post('register')
+  @ApiBody({ type: RegisterDto })
+  @ApiOkResponse({ type: LoginResponseDto })
+  async register(
+    @Body() body: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<LoginResponsePayload> {
+    const session = await this.commandBus.execute<
+      RegisterLocalUserCommand,
+      AuthSession
+    >(new RegisterLocalUserCommand(body.email, body.password));
+    const { refreshToken, refreshTokenExpiresAt } = session;
+
+    this.setRefreshTokenCookie(res, refreshToken, refreshTokenExpiresAt);
+
+    return this.toLoginResponsePayload(session, refreshTokenExpiresAt);
   }
 
   @Post('login')

@@ -11,6 +11,13 @@ export interface CreateOAuthUserInput extends OAuthProviderLink {
   isActive?: boolean;
 }
 
+export interface CreateLocalUserInput {
+  email: string;
+  passwordHash: string;
+  roles?: string[];
+  isActive?: boolean;
+}
+
 export abstract class UserRepository {
   abstract findByEmail(email: string): Promise<UserAggregate | null>;
   abstract findById(id: string): Promise<UserAggregate | null>;
@@ -22,5 +29,6 @@ export abstract class UserRepository {
     link: OAuthProviderLink,
   ): Promise<void>;
   abstract createOAuthUser(input: CreateOAuthUserInput): Promise<UserAggregate>;
+  abstract createLocalUser(input: CreateLocalUserInput): Promise<UserAggregate>;
   abstract findAllSummaries(): Promise<UserSummary[]>;
 }

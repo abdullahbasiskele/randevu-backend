@@ -6,12 +6,12 @@ import {
 } from '@/features/auth/schemas/login-schema';
 import { httpClient } from '@/lib/services/http';
 
-type RoleSummary = {
+export type RoleSummary = {
   id: string;
   name: string;
 };
 
-type AuthenticatedUserSummary = {
+export type AuthenticatedUserSummary = {
   id: string;
   email: string;
   isActive: boolean;

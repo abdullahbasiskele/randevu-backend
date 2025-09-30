@@ -1,10 +1,11 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { hash } from 'bcryptjs';
 import {
   UserRepository,
   type CreateOAuthUserInput,
+  type CreateLocalUserInput,
   type OAuthProviderLink,
 } from '../../domain/repositories/user.repository';
 import type {
@@ -104,8 +105,7 @@ export class PrismaUserRepository extends UserRepository {
   }
 
   async createOAuthUser(input: CreateOAuthUserInput): Promise<UserAggregate> {
-    const roles =
-      input.roles && input.roles.length > 0 ? input.roles : ['USER'];
+    const roles = this.resolveRoleNames(input.roles);
     const saltRounds = Number(process.env.PASSWORD_SALT_ROUNDS ?? 12);
     const randomPassword = randomBytes(32).toString('hex');
     const passwordHash = await hash(randomPassword, saltRounds);
@@ -135,6 +135,28 @@ export class PrismaUserRepository extends UserRepository {
     return this.toAggregate(user);
   }
 
+  async createLocalUser(input: CreateLocalUserInput): Promise<UserAggregate> {
+    const roles = this.resolveRoleNames(input.roles);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: input.email,
+        password: input.passwordHash,
+        isActive: input.isActive ?? true,
+        userRoles: {
+          create: roles.map((roleName) => ({
+            role: {
+              connect: { name: roleName },
+            },
+          })),
+        },
+      },
+      include: USER_WITH_RELATIONS,
+    });
+
+    return this.toAggregate(user);
+  }
+
   async findAllSummaries(): Promise<UserSummary[]> {
     const users = await this.prisma.user.findMany({
       select: {
@@ -149,6 +171,16 @@ export class PrismaUserRepository extends UserRepository {
       email: user.email,
       isActive: user.isActive,
     }));
+  }
+
+  private resolveRoleNames(roles?: string[]): string[] {
+    const fallbackRole = process.env.DEFAULT_USER_ROLE ?? 'USER';
+    const normalizedRoles = roles && roles.length > 0 ? roles : [fallbackRole];
+    const unique = new Set(
+      normalizedRoles.map((role) => role.trim()).filter((role) => role),
+    );
+
+    return Array.from(unique);
   }
 
   private toAggregate(user: PrismaUserWithRelations): UserAggregate {

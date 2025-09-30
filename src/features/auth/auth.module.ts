@@ -11,6 +11,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { UsersModule } from '../user/user.module';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { LoginHandler } from './application/commands/handlers/login.handler';
+import { RegisterLocalUserHandler } from './application/commands/handlers/register-local-user.handler';
 import { RefreshTokensHandler } from './application/commands/handlers/refresh-tokens.handler';
 import { LogoutHandler } from './application/commands/handlers/logout.handler';
 import { GetProfileHandler } from './application/queries/handlers/get-profile.handler';
@@ -19,6 +20,7 @@ import { PrismaRefreshTokenRepository } from './infrastructure/persistence/prism
 
 const AUTH_CQRS_HANDLERS = [
   LoginHandler,
+  RegisterLocalUserHandler,
   RefreshTokensHandler,
   LogoutHandler,
   GetProfileHandler,

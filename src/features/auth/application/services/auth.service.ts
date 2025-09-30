@@ -1,10 +1,11 @@
 ﻿import {
+  ConflictException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { compare } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import type {
   AuthenticatedUser,
   AuthSession,
@@ -108,6 +109,30 @@ export class AuthService {
     }
 
     return this.mapToAuthenticatedUser(user);
+  }
+
+  async registerLocalUser(
+    email: string,
+    password: string,
+  ): Promise<AuthSession> {
+    const existingUser = await this.userRepository.findByEmail(email);
+    if (existingUser) {
+      throw new ConflictException(
+        'Bu e-posta adresi ile kayitli kullanici mevcut.',
+      );
+    }
+
+    const saltRounds = Number(process.env.PASSWORD_SALT_ROUNDS ?? 12);
+    const passwordHash = await hash(password, saltRounds);
+
+    const user = await this.userRepository.createLocalUser({
+      email,
+      passwordHash,
+      isActive: true,
+    });
+
+    const authUser = this.mapToAuthenticatedUser(user);
+    return this.buildAuthSession(authUser);
   }
 
   async login(user: AuthenticatedUser): Promise<AuthSession> {
